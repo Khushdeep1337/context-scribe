@@ -1,0 +1,2 @@
+# Normalize text in Git; use CRLF in working copies on every platform.
+* text=auto eol=crlf
