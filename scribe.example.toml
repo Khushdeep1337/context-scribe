@@ -1,0 +1,15 @@
+project = "my-project"
+guild_id = "111111111111111111"
+# Exact channel IDs, including individual thread IDs when applicable.
+channel_ids = ["222222222222222222"]
+# Explicit opt-in authors. An empty list captures nobody.
+author_ids = ["333333333333333333"]
+database = "data/scribe.sqlite3"
+export = "data/discord-context.md"
+model = "openai/gpt-4o-mini"
+api_key_env = "OPENAI_API_KEY"
+interval_seconds = 3600
+# Optional custom OpenAI-compatible endpoint:
+# api_base = "https://your-provider.example/v1"
+# For local inference: model = "ollama_chat/llama3.2"
+# api_base = "http://127.0.0.1:11434"

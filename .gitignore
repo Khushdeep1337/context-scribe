@@ -1,0 +1,11 @@
+.venv/
+.tmp/
+__pycache__/
+*.egg-info/
+.env
+scribe.toml
+data/
+demo-output/
+discord-context.md
+*.sqlite3*
+*.worker.lock

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=78"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "discord-scribe"
+version = "0.1.0"
+description = "Traceable, reviewed project memory from Discord conversations"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+discord = ["discord.py==2.7.1"]
+llm = ["litellm==1.103.1"]
+all = ["discord.py==2.7.1", "litellm==1.103.1"]
+
+[project.scripts]
+scribe = "discord_scribe.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["discord_scribe*"]
