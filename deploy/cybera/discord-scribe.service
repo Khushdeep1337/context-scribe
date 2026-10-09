@@ -1,0 +1,41 @@
+[Unit]
+Description=Discord Scribe project context worker
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=/var/lib/discord-scribe
+AssertPathIsMountPoint=/var/lib/discord-scribe
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=discord-scribe
+Group=discord-scribe
+WorkingDirectory=/opt/discord-scribe
+EnvironmentFile=/etc/discord-scribe/credentials.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=XDG_CACHE_HOME=/var/cache/discord-scribe
+ExecStart=/opt/discord-scribe/.venv/bin/python -m discord_scribe --config /etc/discord-scribe/scribe.toml run
+Restart=always
+RestartSec=15
+# Match the CLI's Ctrl+C shutdown path; allow its 60s model request to finish.
+KillSignal=SIGINT
+TimeoutStopSec=90
+StateDirectory=discord-scribe
+StateDirectoryMode=0700
+CacheDirectory=discord-scribe
+CacheDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=discord-scribe
+
+[Install]
+WantedBy=multi-user.target

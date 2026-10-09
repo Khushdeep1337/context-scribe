@@ -146,6 +146,11 @@ class Store:
             if not count:
                 raise ValueError("Context item no longer exists; it may have been invalidated by an edit")
 
+    def accept_pending(self) -> None:
+        """Apply automatic selection without inventing an operator review timestamp."""
+        with self.db:
+            self.db.execute("UPDATE context SET status='approved' WHERE status='pending' AND reviewed_at IS NULL")
+
     def records(self, status: str | None = None) -> list[sqlite3.Row]:
         return self.db.execute(
             "SELECT c.*,m.guild_id,m.channel_id,m.author_id,m.updated_at,m.content "

@@ -19,12 +19,13 @@ class Config:
     api_key_env: str = "OPENAI_API_KEY"
     api_base: str | None = None
     interval_seconds: int = 3600
+    require_review: bool = False
 
     @classmethod
     def load(cls, path: Path) -> "Config":
         data = tomllib.loads(path.read_text(encoding="utf-8"))
         required = {"project", "guild_id", "channel_ids", "author_ids", "database", "export"}
-        if not required <= data.keys() or data.keys() - required - {"model", "api_key_env", "api_base", "interval_seconds"}:
+        if not required <= data.keys() or data.keys() - required - {"model", "api_key_env", "api_base", "interval_seconds", "require_review"}:
             raise ValueError("Missing or unknown configuration fields; see scribe.example.toml")
         for name in ("project", "database", "export", "model", "api_key_env", "api_base"):
             if name in data and (not isinstance(data[name], str) or not data[name].strip()):
@@ -43,6 +44,8 @@ class Config:
         if "/" not in data.get("model", "openai/gpt-4o-mini"):
             raise ValueError("Use a provider/model name, such as openai/gpt-4o-mini")
         interval = data.get("interval_seconds", 3600)
+        if type(data.get("require_review", False)) is not bool:
+            raise ValueError("require_review must be true or false")
         if type(interval) is not int or not 10 <= interval <= 86400:
             raise ValueError("interval_seconds must be an integer from 10 to 86400")
         for name in ("database", "export"):

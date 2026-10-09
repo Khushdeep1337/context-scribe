@@ -42,9 +42,6 @@ def demo(path: Path) -> None:
         for index, content in enumerate(samples, 1):
             service.ingest(Message(str(index), "100", "200", "300", content, f"2026-09-30T12:00:0{index}+00:00"))
         asyncio.run(drain(service, 100))
-        # Only this labelled synthetic demonstration auto-approves fixture records.
-        for row in store.records():
-            service.review(row["id"], "approved")
         from .report import write_report
 
         write_report(service, path / "report.html")
@@ -55,7 +52,7 @@ def demo(path: Path) -> None:
 
 
 def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(prog="scribe", description="Turn Discord conversations into reviewed project context.")
+    root = argparse.ArgumentParser(prog="scribe", description="Turn Discord conversations into source-backed project context.")
     root.add_argument("--config", type=Path, default=Path("scribe.toml"))
     commands = root.add_subparsers(dest="command", required=True)
     commands.add_parser("run", help="Listen continuously and extract context hourly")
@@ -127,6 +124,7 @@ def execute(args: argparse.Namespace) -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
+    logging.getLogger("discord_scribe").setLevel(logging.INFO)
     try:
         execute(parser().parse_args())
     except (ValueError, OSError, RuntimeError) as error:

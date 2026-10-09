@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from discord_scribe.config import Config
 from discord_scribe.domain import Message
-from discord_scribe.extractor import DemoExtractor, ModelExtractor
+from discord_scribe.extractor import DemoExtractor, ModelExtractor, EXTRACTION_SCHEMA
 from discord_scribe.service import Service
 from discord_scribe.store import Store
 
@@ -48,6 +48,28 @@ class ModelAdapterTests(unittest.TestCase):
             with patch.dict("sys.modules", {"litellm": fake}), patch.dict(os.environ, {"OPENAI_API_KEY": "synthetic-key"}), self.assertRaises(ValueError):
                 ModelExtractor(self.config).extract(self.message)
 
+    def test_gemini_requests_schema_constrained_json(self):
+        response = SimpleNamespace(choices=[SimpleNamespace(
+            finish_reason="stop", message=SimpleNamespace(content='{"items": []}')
+        )])
+        fake = SimpleNamespace(completion=lambda **kwargs: response)
+        config = replace(self.config, model="gemini/gemini-3.5-flash-lite", api_key_env="GEMINI_API_KEY")
+        with patch.dict("sys.modules", {"litellm": fake}), patch.dict(os.environ, {"GEMINI_API_KEY": "synthetic-key"}):
+            with patch.object(fake, "completion", return_value=response) as call:
+                self.assertEqual(ModelExtractor(config).extract(self.message), {"items": []})
+                format = call.call_args.kwargs["response_format"]
+                self.assertEqual(format["type"], "json_schema")
+                schema = format["json_schema"]["schema"]
+                self.assertEqual(schema["required"], ["items"])
+                item_schema = schema["properties"]["items"]["items"]
+                self.assertIn("evidence", item_schema["required"])
+                self.assertFalse(item_schema["additionalProperties"])
+                self.assertEqual(schema, EXTRACTION_SCHEMA)
+                # A provider that violates the request must still fail closed.
+                response.choices[0].message.content = '```json\n{"items": []}\n```'
+                with self.assertRaises(json.JSONDecodeError):
+                    ModelExtractor(config).extract(self.message)
+
 
 @unittest.skipUnless(importlib.util.find_spec("discord"), "Install the Discord extra for gateway adapter tests")
 class DiscordAdapterTests(unittest.IsolatedAsyncioTestCase):
@@ -81,6 +103,7 @@ class ConfigTests(unittest.TestCase):
     def test_example_config_paths_and_hourly_default(self):
         config = Config.load(Path(__file__).resolve().parents[1] / "scribe.example.toml")
         self.assertEqual(config.interval_seconds, 3600)
+        self.assertFalse(config.require_review)
         self.assertTrue(config.database.is_absolute())
 
     def test_insecure_remote_provider_and_invalid_interval_rejected(self):
@@ -90,6 +113,7 @@ class ConfigTests(unittest.TestCase):
             for content in (
                 source + '\napi_base = "http://remote.example/v1"\n',
                 source.replace("interval_seconds = 3600", "interval_seconds = true"),
+                source.replace("require_review = false", 'require_review = "false"'),
             ):
                 path.write_text(content)
                 with self.assertRaises(ValueError):

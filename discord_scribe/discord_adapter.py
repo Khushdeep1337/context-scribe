@@ -40,7 +40,9 @@ class ScribeClient(discord.Client):
     async def process_queue(self) -> None:
         while True:
             try:
-                await run_due_batch(self.service)
+                processed = await run_due_batch(self.service)
+                if processed:
+                    logger.info("Extraction batch finished: attempted=%s", processed)
                 self.service.export()
             except Exception as error:
                 logger.error("Worker operation failed: error_type=%s", type(error).__name__)

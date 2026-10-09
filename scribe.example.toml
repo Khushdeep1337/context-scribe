@@ -9,6 +9,8 @@ export = "data/discord-context.md"
 model = "openai/gpt-4o-mini"
 api_key_env = "OPENAI_API_KEY"
 interval_seconds = 3600
+# Optional: hold extracted context for explicit approval before export.
+require_review = false
 # Optional custom OpenAI-compatible endpoint:
 # api_base = "https://your-provider.example/v1"
 # For local inference: model = "ollama_chat/llama3.2"

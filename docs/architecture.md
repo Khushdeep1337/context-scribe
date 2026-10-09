@@ -15,11 +15,15 @@ workers. The deadline lives in SQLite. A batch is capped at 100 attempts so a bu
 server cannot trigger an unbounded hourly loop. Transport failure and validation
 failure both consume retry attempts, keeping malformed model output observable.
 
-## Human review as a separate state
+## Automatic selection with optional review
 
 Messages move `pending -> done` or `pending -> failed`. An empty extraction is a
-successful `done` result. Context items move `pending -> approved/rejected`, and
-review may be reversed by an operator. An edit deletes derived records and queues
+successful `done` result. The default export policy promotes validated `pending`
+context to `approved` without setting `reviewed_at`. That legacy status means
+selected for export, not proof of human review. Operator review sets the timestamp;
+export labels preserve the distinction. Automatic mode never promotes rejected
+records. `require_review = true` leaves new candidates pending; changing that
+setting does not revoke already selected records. An edit deletes derived records and queues
 a new source revision; new context IDs prevent approving a stale item by accident.
 Deletion purges the source and records, retaining only an ID tombstone.
 
@@ -38,7 +42,8 @@ Allowlisting is enforced before storing or sending messages to a provider. The
 model receives content only, not Discord credentials, author IDs, tools, or filesystem
 access. A strict validator checks fields, bounded size, categories, finite confidence,
 and exact evidence. Neither JSON validation nor Markdown escaping eliminates semantic
-prompt injection. Explicit human approval and low-trust instructions in the export
+prompt injection. Automatic export is the operator-selected default, not an action
+authorized by the model. Optional review and low-trust instructions in the export
 provide additional boundaries; agents must still treat imported text as evidence.
 
 ## Follow-up work that warrants measurement

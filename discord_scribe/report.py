@@ -12,9 +12,12 @@ def write_report(service: Service, path: Path) -> None:
     rows = service.store.records()
     cards = []
     for row in rows:
+        label = row["status"]
+        if label == "approved":
+            label = "operator approved" if row["reviewed_at"] is not None else "automatic"
         url = f"https://discord.com/channels/{row['guild_id']}/{row['channel_id']}/{row['message_id']}"
         cards.append(f"""<article data-status="{row['status']}">
-<div class="eyebrow">{escape(row['category'])} <span class="badge">{row['status']}</span></div>
+<div class="eyebrow">{escape(row['category'])} <span class="badge">{label}</span></div>
 <h2>{escape(row['summary'])}</h2><blockquote>{escape(row['evidence'])}</blockquote>
 <div class="meta">Context #{row['id']} · Author {row['author_id']} · {escape(row['updated_at'])}</div>
 <details><summary>Inspect full source and extraction</summary><p class="source">{escape(row['content'])}</p>
@@ -38,10 +41,10 @@ article{background:#121b27;border:1px solid #2c3a4d;border-radius:14px;padding:2
 h2{font-size:19px;line-height:1.5;font-weight:600}blockquote{margin:20px 0;padding-left:16px;border-left:2px solid #577088;color:#b7c6d8;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.meta{font-size:11px;color:#aebdce;overflow-wrap:anywhere}a{color:#79dfcb;font-size:13px;text-underline-offset:4px}details{font-size:13px;line-height:1.6;margin:20px 0;color:#c1cede}summary{cursor:pointer}.source{white-space:pre-wrap}code{overflow-wrap:anywhere}footer{color:#9cacc1;font-size:12px;line-height:1.7;margin-top:36px}
 </style></head><body><main><header><div class="wordmark">DISCORD SCRIBE / PROJECT MEMORY</div>
 <h1>Good context.<br>Clear provenance.</h1><p class="intro">PROJECT · A reviewable record of what your team decided, proposed, and needs to do. Every statement leads back to its source.</p>
-<div class="stats"><div><strong>TOTAL</strong><span>context items</span></div><div><strong>APPROVED</strong><span>approved</span></div><div><strong>PENDING</strong><span>awaiting review</span></div></div></header>
+<div class="stats"><div><strong>TOTAL</strong><span>context items</span></div><div><strong>APPROVED</strong><span>selected for export</span></div><div><strong>PENDING</strong><span>awaiting review</span></div></div></header>
 <div class="controls"><label for="search">Search</label><input id="search" type="search" placeholder="Find a decision, constraint, or source…"><label for="status">Status</label><select id="status"><option value="">All items</option><option>pending</option><option>approved</option><option>rejected</option></select></div>
 <p id="count" aria-live="polite"></p><section class="grid" aria-label="Context items">CARDS</section>
-<footer>This is a local snapshot. Regenerate it after review; it does not update live. Synthetic demo reports auto-approve only fixture data. Live records require an explicit review command. Model confidence is not proof of correctness. Private report copies are not removed when the source message is deleted.</footer>
+<footer>This is a local snapshot. Regenerate it after changes; it does not update live. Automatic selections have not been manually reviewed. Enable require_review in configuration to hold new context for review. Model confidence is not proof of correctness. Private report copies are not removed when the source message is deleted.</footer>
 </main><script>
 const search=document.querySelector('#search'), status=document.querySelector('#status');
 function filter(){let count=0;document.querySelectorAll('article').forEach(card=>{card.hidden=!(card.textContent.toLowerCase().includes(search.value.toLowerCase())&&(!status.value||card.dataset.status===status.value));if(!card.hidden)count++});document.querySelector('#count').textContent=count+' items shown'}search.addEventListener('input',filter);status.addEventListener('change',filter);filter();

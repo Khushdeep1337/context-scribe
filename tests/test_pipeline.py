@@ -20,7 +20,7 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.path = Path(self.temp.name)
-        self.config = Config("test", "10", frozenset({"20"}), frozenset({"30"}), self.path / "db.sqlite3", self.path / "context.md")
+        self.config = Config("test", "10", frozenset({"20"}), frozenset({"30"}), self.path / "db.sqlite3", self.path / "context.md", require_review=True)
         self.store = Store(self.config.database, "test", "10")
         self.service = Service(self.config, self.store, DemoExtractor())
         self.message = Message("40", "10", "20", "30", "Decision: Use SQLite.", "2026-09-30T12:00:00Z")
@@ -41,8 +41,46 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
         output = self.config.export.read_text()
         self.assertIn("Use SQLite", output)
         self.assertIn(self.message.url, output)
+        self.assertIn("Operator approved", output)
         self.service.review(row["id"], "rejected")
         self.assertNotIn("Use SQLite", self.config.export.read_text())
+
+    async def test_automatic_selection_exports_and_rejection_is_preserved(self):
+        self.service.config = replace(self.config, require_review=False)
+        row = await self.extract()
+        self.assertEqual(row["status"], "approved")
+        self.assertIsNone(row["reviewed_at"])
+        output = self.config.export.read_text()
+        self.assertIn("Use SQLite", output)
+        self.assertIn("Automatically selected; not manually reviewed", output)
+        self.assertNotIn("Operator approved", output)
+        self.service.review(row["id"], "rejected")
+        self.service.export()
+        self.assertEqual(self.store.records()[0]["status"], "rejected")
+        self.assertNotIn("Use SQLite", self.config.export.read_text())
+
+    async def test_switching_to_automatic_includes_existing_pending_records(self):
+        row = await self.extract()
+        self.assertEqual(row["status"], "pending")
+        self.service.config = replace(self.config, require_review=False)
+        self.service.export()
+        self.assertIn("Use SQLite", self.config.export.read_text())
+        self.assertIsNone(self.store.records()[0]["reviewed_at"])
+
+    async def test_automatic_mode_still_rejects_unsupported_evidence(self):
+        class InvalidExtractor:
+            name = "invalid"
+
+            def extract(self, message):
+                return {"items": [{"category": "decision", "summary": "Invented", "evidence": "Not in source", "confidence": 1}]}
+
+        self.service.config = replace(self.config, require_review=False)
+        self.service.extractor = InvalidExtractor()
+        self.service.ingest(self.message)
+        with self.assertLogs("discord_scribe.service", level="WARNING"):
+            await self.service.process_one()
+        self.assertEqual(self.store.records(), [])
+        self.assertNotIn("Invented", self.config.export.read_text())
 
     async def test_replay_is_idempotent(self):
         await self.extract()
